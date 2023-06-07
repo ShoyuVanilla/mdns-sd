@@ -1,7 +1,7 @@
 use if_addrs::{IfAddr, Ifv4Addr};
 use mdns_sd::{
-    DaemonEvent, Error, IntoTxtProperties, ServiceDaemon, ServiceEvent, ServiceInfo,
-    UnregisterStatus,
+    DaemonEvent, Error, IPMulticastTTLOption, IntoTxtProperties, ServiceDaemon, ServiceEvent,
+    ServiceInfo, UnregisterStatus,
 };
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
@@ -14,7 +14,7 @@ use std::time::{Duration, SystemTime};
 #[test]
 fn integration_success() {
     // Create a daemon
-    let d = ServiceDaemon::new().expect("Failed to create daemon");
+    let d = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).expect("Failed to create daemon");
 
     // Register a service
     let ty_domain = "_mdns-sd-it._udp.local.";
@@ -214,7 +214,7 @@ fn integration_success() {
 #[test]
 fn service_without_properties_with_alter_net() {
     // Create a daemon
-    let d = ServiceDaemon::new().expect("Failed to create daemon");
+    let d = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).expect("Failed to create daemon");
 
     // Register a service without properties.
     let ty_domain = "_serv-no-prop._tcp.local.";
@@ -356,7 +356,7 @@ fn test_into_txt_properties() {
 #[test]
 fn service_with_invalid_addr() {
     // Create a daemon
-    let d = ServiceDaemon::new().expect("Failed to create daemon");
+    let d = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).expect("Failed to create daemon");
 
     // Register a service without properties.
     let ty_domain = "_invalid-addr._tcp.local.";
@@ -417,7 +417,7 @@ fn service_with_invalid_addr() {
 #[test]
 fn subtype() {
     // Create a daemon
-    let d = ServiceDaemon::new().expect("Failed to create daemon");
+    let d = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).expect("Failed to create daemon");
 
     // Register a service with a subdomain
     let subtype_domain = "_directory._sub._test._tcp.local.";
@@ -473,7 +473,8 @@ fn subtype() {
 #[test]
 fn service_name_check() {
     // Create a daemon for the server.
-    let server_daemon = ServiceDaemon::new().expect("Failed to create server daemon");
+    let server_daemon = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal)
+        .expect("Failed to create server daemon");
     let monitor = server_daemon.monitor().unwrap();
     // Register a service with a name len > 15.
     let service_name_too_long = "_service-name-too-long._udp.local.";
@@ -520,7 +521,8 @@ fn service_name_check() {
 #[test]
 fn service_new_publish_after_browser() {
     let service_type = "_new-pub._udp.local.";
-    let daemon = ServiceDaemon::new().expect("Failed to create a new daemon");
+    let daemon =
+        ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).expect("Failed to create a new daemon");
 
     // First, starts the browser.
     let receiver = daemon.browse(service_type).unwrap();
@@ -577,7 +579,8 @@ fn service_new_publish_after_browser() {
 #[test]
 fn instance_name_two_dots() {
     // Create a daemon for the server.
-    let server_daemon = ServiceDaemon::new().expect("Failed to create server daemon");
+    let server_daemon = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal)
+        .expect("Failed to create server daemon");
     let monitor = server_daemon.monitor().unwrap();
 
     // Register an instance name with a ending dot.

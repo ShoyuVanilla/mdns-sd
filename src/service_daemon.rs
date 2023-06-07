@@ -106,6 +106,13 @@ impl fmt::Display for Counter {
     }
 }
 
+#[repr(u32)]
+#[derive(Clone, Copy)]
+pub enum IPMulticastTTLOption {
+    NodeLocal = 0,
+    LinkLocal = 1,
+}
+
 /// The metrics is a HashMap of (name_key, i64_value).
 /// The main purpose is to help monitoring the mDNS packet traffic.
 pub type Metrics = HashMap<String, i64>;
@@ -124,8 +131,8 @@ impl ServiceDaemon {
     ///
     /// The daemon (re)uses the default mDNS port 5353. To keep it simple, we don't
     /// ask callers to set the port.
-    pub fn new() -> Result<Self> {
-        let zc = Zeroconf::new()?;
+    pub fn new(ip_multicast_ttl_option: IPMulticastTTLOption) -> Result<Self> {
+        let zc = Zeroconf::new(ip_multicast_ttl_option)?;
         let (sender, receiver) = bounded(100);
 
         // Spawn the daemon thread
@@ -521,10 +528,16 @@ impl ServiceDaemon {
 }
 
 /// Creates a new UDP socket that uses `intf_ip` to send and recv multicast.
-fn new_socket_bind(intf_ip: &Ipv4Addr) -> Result<Socket> {
+fn new_socket_bind(
+    intf_ip: &Ipv4Addr,
+    ip_multicast_ttl_option: IPMulticastTTLOption,
+) -> Result<Socket> {
     // Use the same socket for receiving and sending multicast packets.
     // Such socket has to bind to INADDR_ANY.
     let sock = new_socket(Ipv4Addr::new(0, 0, 0, 0), MDNS_PORT, true)?;
+
+    sock.set_multicast_ttl_v4(ip_multicast_ttl_option as u32)
+        .map_err(|e| e_fmt!("set multicast ttl on addr {}: {}", intf_ip, e))?;
 
     // Join mDNS group to receive packets.
     sock.join_multicast_v4(&GROUP_ADDR, intf_ip)
@@ -592,6 +605,8 @@ struct Zeroconf {
     /// Well-known mDNS IPv4 address and port
     broadcast_addr: SockAddr,
 
+    ip_multicast_ttl_option: IPMulticastTTLOption,
+
     cache: DnsCache,
 
     /// Active "Browse" commands.
@@ -613,7 +628,7 @@ struct Zeroconf {
 }
 
 impl Zeroconf {
-    fn new() -> Result<Self> {
+    fn new(ip_multicast_ttl_option: IPMulticastTTLOption) -> Result<Self> {
         let poller = Poller::new().map_err(|e| e_fmt!("create Poller: {}", e))?;
 
         // Get IPv4 interfaces.
@@ -622,7 +637,7 @@ impl Zeroconf {
         // Create a socket for every IPv4 interface.
         let mut intf_socks = HashMap::new();
         for intf in my_ifv4addrs {
-            let sock = match new_socket_bind(&intf.ip) {
+            let sock = match new_socket_bind(&intf.ip, ip_multicast_ttl_option) {
                 Ok(s) => s,
                 Err(e) => {
                     debug!("bind a socket to {}: {}. Skipped.", &intf.ip, e);
@@ -640,6 +655,7 @@ impl Zeroconf {
             intf_socks,
             my_services: HashMap::new(),
             broadcast_addr,
+            ip_multicast_ttl_option,
             cache: DnsCache::new(),
             queriers: HashMap::new(),
             retransmissions: Vec::new(),
@@ -727,7 +743,7 @@ impl Zeroconf {
 
             // Bind the new interface.
             let new_ip = intf.ip;
-            let sock = match new_socket_bind(&new_ip) {
+            let sock = match new_socket_bind(&new_ip, self.ip_multicast_ttl_option) {
                 Ok(s) => {
                     debug!("check_ip_changes: bind {}", &intf.ip);
                     s
@@ -1014,7 +1030,7 @@ impl Zeroconf {
             }
 
             // Replace the closed socket with a new one.
-            match new_socket_bind(&intf_sock.intf.ip) {
+            match new_socket_bind(&intf_sock.intf.ip, self.ip_multicast_ttl_option) {
                 Ok(sock) => {
                     let intf = intf_sock.intf.clone();
                     self.intf_socks.insert(*ipv4, IntfSock { intf, sock });

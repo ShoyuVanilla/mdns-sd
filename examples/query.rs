@@ -13,13 +13,14 @@
 //!
 //! Keeps listening for new events.
 
-use mdns_sd::{ServiceDaemon, ServiceEvent};
+use mdns_sd::{IPMulticastTTLOption, ServiceDaemon, ServiceEvent};
 
 fn main() {
     env_logger::init();
 
     // Create a daemon
-    let mdns = ServiceDaemon::new().expect("Failed to create daemon");
+    let mdns =
+        ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).expect("Failed to create daemon");
 
     let mut service_type = match std::env::args().nth(1) {
         Some(arg) => arg,

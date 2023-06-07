@@ -11,7 +11,7 @@
 //! Options:
 //! "--unregister": automatically unregister after 2 seconds.
 
-use mdns_sd::{ServiceDaemon, ServiceInfo};
+use mdns_sd::{IPMulticastTTLOption, ServiceDaemon, ServiceInfo};
 use std::{env, thread, time::Duration};
 
 fn main() {
@@ -30,7 +30,8 @@ fn main() {
     }
 
     // Create a new mDNS daemon.
-    let mdns = ServiceDaemon::new().expect("Could not create service daemon");
+    let mdns = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal)
+        .expect("Could not create service daemon");
     let service_type = match args.get(1) {
         Some(arg) => format!("{}.local.", arg),
         None => {

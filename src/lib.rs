@@ -23,7 +23,7 @@
 //!
 //! # Usage
 //!
-//! The user starts with creating a daemon by calling [`ServiceDaemon::new()`].
+//! The user starts with creating a daemon by calling [`ServiceDaemon::new(ip_multicast_ttl_option: IPMulticastTTLOption)`].
 //! Then as a mDNS querier, the user would call [`browse`](`ServiceDaemon::browse`) to
 //! search for services, and/or as a mDNS responder, call [`register`](`ServiceDaemon::register`)
 //! to publish (i.e. announce) its own service. And, the daemon type can be cloned and passed
@@ -32,10 +32,10 @@
 //! ## Example: a client querying for a service type.
 //!
 //! ```rust
-//! use mdns_sd::{ServiceDaemon, ServiceEvent};
+//! use mdns_sd::{ServiceDaemon, ServiceEvent, IPMulticastTTLOption};
 //!
 //! // Create a daemon
-//! let mdns = ServiceDaemon::new().expect("Failed to create daemon");
+//! let mdns = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).expect("Failed to create daemon");
 //!
 //! // Browse for a service type.
 //! let service_type = "_mdns-sd-my-test._udp.local.";
@@ -61,11 +61,11 @@
 //! ## Example: a server publishs a service and responds to queries.
 //!
 //! ```rust
-//! use mdns_sd::{ServiceDaemon, ServiceInfo};
+//! use mdns_sd::{ServiceDaemon, ServiceInfo, IPMulticastTTLOption};
 //! use std::collections::HashMap;
 //!
 //! // Create a daemon
-//! let mdns = ServiceDaemon::new().expect("Failed to create daemon");
+//! let mdns = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).expect("Failed to create daemon");
 //!
 //! // Create a service info.
 //! let service_type = "_mdns-sd-my-test._udp.local.";
@@ -124,7 +124,7 @@ mod service_info;
 
 pub use error::{Error, Result};
 pub use service_daemon::{
-    DaemonEvent, Metrics, ServiceDaemon, ServiceEvent, UnregisterStatus,
+    DaemonEvent, IPMulticastTTLOption, Metrics, ServiceDaemon, ServiceEvent, UnregisterStatus,
     SERVICE_NAME_LEN_MAX_DEFAULT,
 };
 pub use service_info::{AsIpv4Addrs, IntoTxtProperties, ServiceInfo, TxtProperties, TxtProperty};
